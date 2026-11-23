@@ -1,0 +1,8 @@
+{
+  "checkpoint": "amazon/chronos-bolt-small",
+  "device": "mps",
+  "context": 60,
+  "chronos_forecasting": "2.3.2",
+  "torch": "2.14.1",
+  "seconds": 10.75
+}

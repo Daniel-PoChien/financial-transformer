@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Guess where Apple stock goes in five minutes, then compare your answer with an AI forecast and the real price.">
+  <title>Five Minutes Later? | A Stock Prediction Game</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="examples.js"></script>
+  <script defer src="experiment.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">↗</span> <span lang="en" class="copy">Five Minutes Later?</span><span lang="zh-Hant" class="copy">五分鐘後？</span></a>
+    <nav id="navigation" aria-label="Main navigation"><a href="#play"><span lang="en" class="copy">Play</span><span lang="zh-Hant" class="copy">猜一猜</span></a><a href="#learn"><span lang="en" class="copy">How it learns</span><span lang="zh-Hant" class="copy">模型怎麼學</span></a><a href="#results"><span lang="en" class="copy">Results</span><span lang="zh-Hant" class="copy">實驗結果</span></a></nav>
+    <div class="language" id="language" role="group" aria-label="Language">
+      <button type="button" data-language="en" lang="en" aria-pressed="true">English</button>
+      <button type="button" data-language="zh-Hant" lang="zh-Hant" aria-pressed="false">中文</button>
+    </div>
+  </header>
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="kicker"><span lang="en" class="copy">A stock prediction game</span><span lang="zh-Hant" class="copy">AI × 股價的小實驗</span></p>
+        <h1 id="hero-title"><span lang="en" class="copy">Five minutes later,</span><span lang="zh-Hant" class="copy">五分鐘後，</span><br><em><span lang="en" class="copy">up or down?</span><span lang="zh-Hant" class="copy">漲還是跌？</span></em></h1>
+        <p class="intro"><span lang="en" class="copy">Look at how Apple stock just moved. Guess what happens next, then see how the AI did.</span><span lang="zh-Hant" class="copy">看看 Apple 股價剛才怎麼走，猜猜接下來會發生什麼。選好方向，再看 AI 猜得怎樣。</span></p>
+        <a class="primary" href="#play"><span lang="en" class="copy">Start guessing</span><span lang="zh-Hant" class="copy">開始猜</span> <span aria-hidden="true">↓</span></a>
+      </div>
+      <section id="play" class="game" aria-labelledby="game-title">
+        <div class="game-header">
+          <div><p class="kicker" id="round"></p><h2 id="game-title"><span lang="en" class="copy">Which way will it go?</span><span lang="zh-Hant" class="copy">你猜哪個方向？</span></h2></div>
+          <span class="ticker">AAPL</span>
+        </div>
+        <p id="chart-context" class="context"></p>
+        <canvas id="chart" role="img" aria-label="Recent AAPL prices"></canvas>
+        <div class="choices" id="choices" aria-label="Guess the price direction">
+          <button id="up" type="button"><span lang="en" class="copy">↑ I guess up</span><span lang="zh-Hant" class="copy">↑ 我猜會漲</span></button>
+          <button id="down" type="button"><span lang="en" class="copy">↓ I guess down</span><span lang="zh-Hant" class="copy">↓ 我猜會跌</span></button>
+        </div>
+        <div class="reveal" id="reveal" hidden>
+          <div id="feedback" aria-live="polite"></div>
+          <button id="next" type="button"></button>
+        </div>
+      </section>
+    </section>
+
+    <section class="learning" id="learn" aria-labelledby="learn-title">
+      <h2 id="learn-title"><span lang="en" class="copy">How does the model learn?</span><span lang="zh-Hant" class="copy">模型怎麼學？</span></h2>
+      <div class="steps">
+        <article><span class="symbol blue" aria-hidden="true">↗</span><h3><span lang="en" class="copy">Look back 60 minutes</span><span lang="zh-Hant" class="copy">回看 60 分鐘</span></h3><p><span lang="en" class="copy">The model looks for clues in the last hour, like how much the price moved.</span><span lang="zh-Hant" class="copy">模型用價格變化、波動大小等線索來看最近發生了什麼。</span></p></article>
+        <article><span class="symbol lilac" aria-hidden="true">≈</span><h3><span lang="en" class="copy">Combine the clues</span><span lang="zh-Hant" class="copy">把線索濃縮</span></h3><p><span lang="en" class="copy">PCA combines 7 numbers into 5 summaries. Clues that move together can share a summary.</span><span lang="zh-Hant" class="copy">PCA 把 7 項數字整理成 5 項摘要。有些線索會一起變化，可以用同一項摘要來表示。</span></p></article>
+        <article><span class="symbol yellow" aria-hidden="true">→</span><h3><span lang="en" class="copy">Guess 5 minutes ahead</span><span lang="zh-Hant" class="copy">猜 5 分鐘後</span></h3><p><span lang="en" class="copy">The Transformer compares chunks of time to predict how much the price will move. The real price five minutes later tells us how close it came.</span><span lang="zh-Hant" class="copy">Transformer 把連續時段放在一起比較，估計股價會變多少。用之後真的發生的價格檢查猜得準不準。</span></p></article>
+      </div>
+    </section>
+    <section class="results" id="results" aria-labelledby="results-title">
+      <div><p class="kicker"><span lang="en" class="copy">AAPL historical test · 7,531 predictions</span><span lang="zh-Hant" class="copy">AAPL 歷史測試 · 7,531 次預測</span></p><h2 id="results-title"><span lang="en" class="copy">Did the AI guess better?</span><span lang="zh-Hant" class="copy">AI 有猜得更準嗎？</span></h2><p><span lang="en" class="copy">The PCA model and a simple guess that the price would stay the same were both off by about <strong>US$0.255</strong> on average. In the simulation, none of the predicted moves cleared the 0.02% round-trip trading cost.</span><span lang="zh-Hant" class="copy">這次實驗中，PCA 模型和「五分鐘後價格一樣」平均每次都差了約 <strong>US$0.255</strong>。回測把每筆來回成本設為 2 基點（0.02%）時，模型的預測變動都低於進場門檻。</span></p></div>
+      <div class="metric"><span><span lang="en" class="copy">Average error</span><span lang="zh-Hant" class="copy">平均差距</span></span><strong><span lang="en" class="copy">25.5 cents</span><span lang="zh-Hant" class="copy">25.5 美分</span></strong><span><span lang="en" class="copy">Both guesses came about as close</span><span lang="zh-Hant" class="copy">兩種猜法的結果幾乎相同</span></span></div>
+    </section>
+  </main>
+  <footer><span lang="en" class="copy">Historical data demo · Three examples from the August 20, 2026 AAPL test data</span><span lang="zh-Hant" class="copy">歷史行情教學展示 <span>・</span> 三題取自 2026 年 8 月 20 日的 AAPL 測試資料</span></footer>
+</body>
+</html>

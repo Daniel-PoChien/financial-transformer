@@ -1,0 +1,48 @@
+{
+  "model": "patch_transformer",
+  "seed": 7,
+  "device": "mps",
+  "torch": "2.14.1",
+  "pandas": "3.1.0",
+  "numpy": "2.4.6",
+  "data_sha256": "c6a803f7ae95a95b8466ea414e35a4cba17f4a719136f6e1bb1fa77fcf153581",
+  "context": 60,
+  "patch": 5,
+  "features": [
+    "return_1",
+    "return_5",
+    "return_20",
+    "ma_5_ratio",
+    "ma_20_ratio",
+    "volatility_20",
+    "volume_change"
+  ],
+  "scaler_mean": [
+    0.0005735235172323883,
+    0.0028077501337975264,
+    0.010813986882567406,
+    0.001177493715658784,
+    0.005498793441802263,
+    0.013058045879006386,
+    -0.0006320884567685425
+  ],
+  "scaler_std": [
+    0.015390202403068542,
+    0.031823188066482544,
+    0.06328056752681732,
+    0.01588261127471924,
+    0.03480667248368263,
+    0.008337728679180145,
+    0.3365633487701416
+  ],
+  "pca": null,
+  "batch_size": 128,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "parameters": 70209,
+  "best_epoch": 1,
+  "epochs_run": 6,
+  "max_epochs": 30,
+  "validation_mse": 0.00017513322004838422,
+  "seconds": 14.07
+}
