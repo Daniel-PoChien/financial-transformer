@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from backtest import add_matched_benchmarks, backtest, summarize
+from backtest import backtest, summarize
 from run_tabular_baselines import make_features, score, split_masks
 
 KEY = ["date", "ticker"]
@@ -76,8 +76,7 @@ def main() -> None:
             if set(run["model"]) != {model}:
                 raise ValueError(f"Unexpected model in {model}_{seed}.csv")
             runs.append(run)
-            stocks = run[run["ticker"].ne("SPY")]
-            trade = summarize(backtest(stocks, prices, 10)).loc[model].to_dict()
+            trade = summarize(backtest(run, prices, 10)).loc[model].to_dict()
             seed_metrics.append({"model": model, "seed": seed, **score(run["target"], run["prediction"].to_numpy()), **trade})
         ensemble = pd.concat(runs).groupby(KEY + ["model"], as_index=False)[["target", "prediction"]].mean()
         frames.append(ensemble)
@@ -96,12 +95,7 @@ def main() -> None:
     paired_mae_intervals(matched).to_csv(args.results / "paired_mae_intervals.csv", index=False)
     pd.DataFrame(seed_metrics).to_csv(args.results / "seed_metrics.csv", index=False)
 
-    stocks = prices[prices["ticker"].ne("SPY")]
-    trades = matched[~matched["ticker"].eq("SPY") & ~matched["model"].eq("zero_return")]
-    coverage = trades.groupby(["model", "date"]).size()
-    if not coverage.eq(stocks["ticker"].nunique()).all():
-        raise ValueError("Trading requires complete daily coverage of the stock universe")
-    returns = add_matched_benchmarks(backtest(trades, stocks, 10), stocks, 10)
+    returns = backtest(matched, prices, 10, include_benchmarks=True, require_full_coverage=True)
     returns = returns.merge(expected.reset_index()[["date", "target_date"]].drop_duplicates(),
                             on="date", validate="many_to_one")
     returns.to_csv(args.results / "backtest_returns.csv", index=False)

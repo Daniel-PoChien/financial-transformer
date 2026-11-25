@@ -14,12 +14,26 @@ def maximum_drawdown(returns: pd.Series) -> float:
     return float((wealth / wealth.cummax().clip(lower=1.0) - 1).min())
 
 
-def backtest(predictions: pd.DataFrame, prices: pd.DataFrame, cost_bps: float) -> pd.DataFrame:
-    prices = prices.sort_values(["ticker", "date"]).copy()
-    prices["next_open"] = prices.groupby("ticker")["open"].shift(-1)
-    prices["next_close"] = prices.groupby("ticker")["close"].shift(-1)
-    prices["next_intraday_return"] = prices["next_close"] / prices["next_open"] - 1
-    merged = predictions.merge(prices[["date", "ticker", "next_intraday_return"]], on=["date", "ticker"], how="inner", validate="many_to_one").dropna(subset=["next_intraday_return"])
+def _next_stock_returns(prices: pd.DataFrame) -> pd.DataFrame:
+    stocks = prices.loc[prices["ticker"].ne("SPY")].sort_values(["ticker", "date"])
+    following = stocks.groupby("ticker")[["open", "close"]].shift(-1)
+    return stocks[["date", "ticker"]].assign(next_intraday_return=following["close"] / following["open"] - 1)
+
+
+def backtest(
+    predictions: pd.DataFrame, prices: pd.DataFrame, cost_bps: float, *,
+    include_benchmarks: bool = False, require_full_coverage: bool = False,
+) -> pd.DataFrame:
+    """Rank stock forecasts and optionally include the matched cash and long-only portfolios."""
+    stock_returns = _next_stock_returns(prices)
+    is_cash = predictions["model"].eq("zero_return")
+    ranked = predictions.loc[~is_cash & predictions["ticker"].ne("SPY")]
+    if require_full_coverage:
+        coverage = ranked.groupby(["model", "date"]).size()
+        if not coverage.eq(stock_returns["ticker"].nunique()).all():
+            raise ValueError("Trading requires complete daily coverage of the stock universe")
+    merged = ranked.merge(stock_returns, on=["date", "ticker"], validate="many_to_one")
+    merged = merged.dropna(subset=["next_intraday_return"])
     records: list[dict[str, object]] = []
     for (model, date), day in merged.groupby(["model", "date"], sort=True):
         if len(day) < 6:
@@ -32,7 +46,12 @@ def backtest(predictions: pd.DataFrame, prices: pd.DataFrame, cost_bps: float) -
         turnover = 2.0
         cost = turnover * cost_bps / 10_000
         records.append({"date": date, "model": model, "gross_return": gross, "turnover": turnover, "net_return": gross - cost})
-    return pd.DataFrame(records)
+    returns = pd.DataFrame.from_records(records, columns=["date", "model", "gross_return", "turnover", "net_return"])
+    if include_benchmarks:
+        cash_dates = pd.Index(predictions.loc[is_cash, "date"].unique())
+        dates = cash_dates.union(returns["date"].unique(), sort=False)
+        return _with_benchmarks(returns, stock_returns, dates, cost_bps)
+    return returns
 
 
 def summarize(returns: pd.DataFrame) -> pd.DataFrame:
@@ -56,15 +75,20 @@ def summarize(returns: pd.DataFrame) -> pd.DataFrame:
 
 def add_matched_benchmarks(returns: pd.DataFrame, prices: pd.DataFrame, cost_bps: float = 0.0) -> pd.DataFrame:
     """Add cash and a daily equal-weight long-only reference on identical open-close returns."""
-    prices = prices.sort_values(["ticker", "date"]).copy()
-    prices["next_open"] = prices.groupby("ticker")["open"].shift(-1)
-    prices["next_close"] = prices.groupby("ticker")["close"].shift(-1)
-    prices["next_intraday_return"] = prices["next_close"] / prices["next_open"] - 1
-    dates = returns["date"].drop_duplicates()
-    reference = prices[prices["date"].isin(dates)].groupby("date")["next_intraday_return"].mean().dropna()
+    dates = pd.Index(returns["date"].unique())
+    return _with_benchmarks(returns, _next_stock_returns(prices), dates, cost_bps)
+
+
+def _with_benchmarks(
+    returns: pd.DataFrame, stock_returns: pd.DataFrame, dates: pd.Index, cost_bps: float,
+) -> pd.DataFrame:
+    reference = stock_returns.loc[stock_returns["date"].isin(dates)].groupby("date")["next_intraday_return"].mean().dropna()
     equal_weight = pd.DataFrame({"date": reference.index, "model": "equal_weight_long_only", "gross_return": reference.to_numpy(), "turnover": 2.0, "net_return": reference.to_numpy() - 2 * cost_bps / 10_000})
     cash = pd.DataFrame({"date": reference.index, "model": "cash", "gross_return": 0.0, "turnover": 0.0, "net_return": 0.0})
-    return pd.concat([returns, equal_weight, cash], ignore_index=True)
+    benchmarks = [equal_weight, cash]
+    if not returns.empty:
+        benchmarks.insert(0, returns)
+    return pd.concat(benchmarks, ignore_index=True)
 
 
 def main() -> None:
@@ -76,7 +100,9 @@ def main() -> None:
     args = parser.parse_args()
     predictions = pd.read_csv(args.predictions, parse_dates=["date"])
     prices = pd.read_csv(args.prices, parse_dates=["date"])
-    returns = add_matched_benchmarks(backtest(predictions, prices, args.cost_bps), prices, args.cost_bps)
+    returns = backtest(predictions, prices, args.cost_bps, include_benchmarks=True)
+    if returns.empty:
+        parser.error("No eligible portfolios on dates with next-session stock prices")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     returns.to_csv(args.output, index=False)
     metrics = summarize(returns)
